@@ -1,36 +1,31 @@
 use std::io;
 use std::io::BufRead;
 
+use fallible_iterator::{self, FallibleIterator};
+
 fn main() {
     let stdin = io::stdin();
-    let inputs: Result<Vec<i64>, &'static str> = stdin
-        .lock()
-        .lines()
-        .filter_map(|line_result| {
-            line_result
-                .map_err(|_| "Could not read a line.")
-                .map(|line| if line.trim() == "" {
-                    None
-                } else {
-                    Some(line)
-                })
-                .transpose()
-                .map(|line_result| line_result.and_then(|line|
-                    line.parse::<i64>().map_err(|_| "A line was invalid.")
-                ))
-        }).collect();
+    let input =
+        fallible_iterator::convert(stdin.lock().lines()).map_err(|_| "A line could not be read.");
+    let input = sanitize(input);
+    let result = calibrate(input);
 
-
-    match inputs {
-        Ok(changes) => {
-            let result = calibrate(changes);
-            println!("{}", result)
-        },
+    match result {
+        Ok(res) => println!("{}", res),
         Err(error) => eprintln!("The input was invalid: {}", error),
     }
 }
 
+type Error = &'static str;
 
-fn calibrate(changes: Vec<i64>) -> i64 {
-    changes.iter().fold(0, |acc, change| acc + change)
+fn sanitize(
+    input: impl FallibleIterator<Item = String, Error = Error>,
+) -> impl FallibleIterator<Item = i64, Error = Error> {
+    input
+        .filter(|line| Ok(line.trim() != ""))
+        .map(|line| line.parse::<i64>().map_err(|_| "A line was invalid."))
+}
+
+fn calibrate(changes: impl FallibleIterator<Item = i64, Error = Error>) -> Result<i64, Error> {
+    changes.fold(0, |acc, change| Ok(acc + change))
 }

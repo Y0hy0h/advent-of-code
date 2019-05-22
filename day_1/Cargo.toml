@@ -5,3 +5,4 @@ authors = ["jojo"]
 edition = "2018"
 
 [dependencies]
+fallible-iterator = "0.2.0"
